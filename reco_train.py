@@ -1,42 +1,147 @@
 from reco_preprocessing import prepare_reco_data
-from sklearn.ensemble import RandomForestClassifier
+
+import numpy as np
+import os
+
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, classification_report
-import numpy as np
-import pickle, os
 
-DATASET = "dataset/crop_data.csv"
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import (
+    Dense,
+    LSTM,
+    Bidirectional,
+    Dropout,
+    BatchNormalization
+)
+from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
+from tensorflow.keras.utils import to_categorical
 
-X, y = prepare_reco_data(DATASET)
+DATASET = "dataset\Custom_Crops_yield_Historical_Dataset.csv"
+SEQUENCE_LENGTH = 6
 
+# 📦 Load data
+X, y = prepare_reco_data(DATASET, SEQUENCE_LENGTH)
+
+num_classes = len(np.unique(y))
+y_cat = to_categorical(y, num_classes)
+
+# ⛔ Time-series split (NO shuffle)
 X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, stratify=y, random_state=42
-)
-
-model = RandomForestClassifier(
-    n_estimators=800,
-    max_depth=25,
-    min_samples_leaf=2,
-    max_features="sqrt",
-    class_weight="balanced",
+    X,
+    y_cat,
+    test_size=0.2,
     random_state=42,
-    n_jobs=-1
+    shuffle=False
 )
 
-model.fit(X_train, y_train)
+# 🧠 BiLSTM Model (High-Accuracy Design)
+model = Sequential([
+    Bidirectional(
+        LSTM(128, return_sequences=True),
+        input_shape=X_train.shape[1:]
+    ),
+    BatchNormalization(),
+    Dropout(0.3),
 
-y_pred = model.predict(X_test)
-print("\n🌱 TOP-1 ACCURACY:", accuracy_score(y_test, y_pred))
+    Bidirectional(LSTM(64)),
+    BatchNormalization(),
+    Dropout(0.3),
 
-proba = model.predict_proba(X_test)
-top3 = np.argsort(-proba, axis=1)[:, :3]
-top3_acc = np.mean([y_test[i] in top3[i] for i in range(len(y_test))])
+    Dense(64, activation="relu"),
+    Dropout(0.2),
+
+    Dense(num_classes, activation="softmax")
+])
+
+model.compile(
+    optimizer="adam",
+    loss="categorical_crossentropy",
+    metrics=["accuracy"]
+)
+
+model.summary()
+
+# 🛑 Callbacks
+early_stop = EarlyStopping(
+    monitor="val_loss",
+    patience=7,
+    restore_best_weights=True
+)
+
+lr_reduce = ReduceLROnPlateau(
+    monitor="val_loss",
+    factor=0.5,
+    patience=3,
+    verbose=1
+)
+
+# 🚀 Train
+history = model.fit(
+    X_train,
+    y_train,
+    epochs=60,
+    batch_size=32,
+    validation_split=0.2,
+    callbacks=[early_stop, lr_reduce],
+    verbose=1
+)
+
+# 📊 Evaluation
+y_pred_prob = model.predict(X_test)
+y_pred = np.argmax(y_pred_prob, axis=1)
+y_true = np.argmax(y_test, axis=1)
+
+print("\n🌱 TOP-1 ACCURACY:", accuracy_score(y_true, y_pred))
+
+# 🔥 TOP-3 Accuracy
+top3 = np.argsort(-y_pred_prob, axis=1)[:, :3]
+top3_acc = np.mean([y_true[i] in top3[i] for i in range(len(y_true))])
 print("🔥 TOP-3 ACCURACY:", top3_acc)
 
-print("\nClassification Report\n")
-print(classification_report(y_test, y_pred))
+print("\n📋 Classification Report\n")
+print(classification_report(y_true, y_pred))
 
+# 💾 Save model
 os.makedirs("models/reco", exist_ok=True)
-pickle.dump(model, open("models/reco/crop_reco_model.pkl", "wb"))
+model.save("models/reco/crop_reco_bilstm_model.h5")
 
-print("✅ Recommendation model saved")
+print("✅ BiLSTM Crop Recommendation Model Saved")
+
+
+import matplotlib.pyplot as plt
+
+# -----------------------------
+# PLOT 3: Training vs Validation Accuracy
+# -----------------------------
+plt.figure()
+plt.plot(history.history["accuracy"], label="Training Accuracy")
+plt.plot(history.history["val_accuracy"], label="Validation Accuracy")
+plt.xlabel("Epochs")
+plt.ylabel("Accuracy")
+plt.title("Crop Recommendation Accuracy Curve")
+plt.legend()
+plt.grid(True)
+plt.show()
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+
+cm = confusion_matrix(y_true, y_pred)
+
+plt.figure()
+disp = ConfusionMatrixDisplay(confusion_matrix=cm)
+disp.plot()
+plt.title("Crop Recommendation Confusion Matrix")
+plt.show()
+
+import pickle
+eval_data = {
+    "y_true": y_true,
+    "y_pred": y_pred,
+    "train_acc": history.history["accuracy"],
+    "val_acc": history.history["val_accuracy"]
+}
+
+pickle.dump(
+    eval_data,
+    open("models/reco/reco_eval.pkl", "wb")
+)
