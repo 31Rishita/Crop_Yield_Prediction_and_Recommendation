@@ -9,3 +9,5 @@ seaborn==0.13.2
 
 tensorflow==2.15.1
 keras==2.15.0
+
+python-3.10.13
