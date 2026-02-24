@@ -4,24 +4,20 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 
-# ---------------------------------
 # PAGE CONFIG
-# ---------------------------------
 st.set_page_config(
     page_title="Model Evaluation",
     page_icon="📊",
     layout="wide"
 )
 
-st.title("📊 Model Evaluation Dashboard")
+st.title("Model Evaluation Dashboard")
 st.markdown(
     "Performance analysis of **Yield Prediction** and "
     "**Crop Recommendation** models"
 )
 
-# ---------------------------------
 # LOAD EVALUATION DATA
-# ---------------------------------
 @st.cache_resource
 def load_eval_data():
     yield_eval = pickle.load(
@@ -35,9 +31,7 @@ def load_eval_data():
 
 yield_eval, reco_eval = load_eval_data()
 
-# ---------------------------------
 # LAYOUT
-# ---------------------------------
 col1, col2 = st.columns(2)
 
 # ========= LEFT: YIELD =========
@@ -102,10 +96,8 @@ with col2:
     ax4.set_title("Crop Recommendation Confusion Matrix")
     st.pyplot(fig4)
 
-# ---------------------------------
 # FOOTER
-# ---------------------------------
 st.markdown("---")
 st.caption(
-    "Model Evaluation | Smart Crop Advisory System"
+    "Model Evaluation | Crop Yield Prediction and Crop Recommendation"
 )

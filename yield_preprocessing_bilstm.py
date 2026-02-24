@@ -2,7 +2,6 @@ import pandas as pd
 import numpy as np
 import pickle
 
-
 def prepare_bilstm_data(csv_path, time_steps=7, save_artifacts=False):
     df = pd.read_csv(csv_path)
 

@@ -1,9 +1,7 @@
 import pandas as pd
 import numpy as np
 import os, pickle
-
 from sklearn.preprocessing import MinMaxScaler, LabelEncoder
-
 
 def prepare_reco_data(
     csv_path,
@@ -11,11 +9,8 @@ def prepare_reco_data(
 ):
     df = pd.read_csv(csv_path)
     df = df.dropna()
-
-    # ✅ Only Andhra Pradesh & Telangana
     df = df[df["State Name"].isin(["Andhra Pradesh", "Telangana"])]
 
-    # ✅ Sort for time series
     df = df.sort_values(
         by=["State Name", "Dist Name", "Crop", "Year"]
     )
@@ -24,7 +19,6 @@ def prepare_reco_data(
     crop_encoder = LabelEncoder()
     df["crop_encoded"] = crop_encoder.fit_transform(df["Crop"])
 
-    # 🧠 Selected high-impact features (for ~90% accuracy)
     feature_cols = [
         "Area_ha",
         "N_req_kg_per_ha",
@@ -41,11 +35,9 @@ def prepare_reco_data(
     X_raw = df[feature_cols].values
     y_raw = df["crop_encoded"].values
 
-    # 🔢 Scaling
     scaler = MinMaxScaler()
     X_scaled = scaler.fit_transform(X_raw)
 
-    # 💾 Save encoders
     os.makedirs("models/reco", exist_ok=True)
     pickle.dump(scaler, open("models/reco/reco_scaler.pkl", "wb"))
     pickle.dump(crop_encoder, open("models/reco/crop_encoder.pkl", "wb"))

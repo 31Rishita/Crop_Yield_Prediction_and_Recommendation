@@ -2,25 +2,22 @@ import streamlit as st
 import numpy as np
 import pickle
 import tensorflow as tf
+from cache.cache_store import save_cache
 
-# ---------------------------------
 # PAGE CONFIG
-# ---------------------------------
 st.set_page_config(
     page_title="Smart Crop Advisory System",
     page_icon="🌱",
     layout="wide"
 )
 
-st.title("🌾 Smart Crop Advisory System")
+st.title("🌾Crop Yield Prediction and Crop Recommendation")
 st.markdown(
-    "AI-powered **Crop Recommendation & Yield Prediction** "
+    " **Crop Yield Prediction & Crop Recommendation** "
     "for Andhra Pradesh and Telangana"
 )
 
-# ---------------------------------
 # STATIC DROPDOWNS
-# ---------------------------------
 CROPS = ["Rice", "Maize", "Chickpea", "Cotton"]
 
 AP_DISTRICTS = [
@@ -35,9 +32,7 @@ TG_DISTRICTS = [
     "Karimnagar", "Adilabad"
 ]
 
-# ---------------------------------
 # CACHE: LOAD MODELS & ARTIFACTS
-# ---------------------------------
 @st.cache_resource
 def load_yield_model():
     model = tf.keras.models.load_model(
@@ -64,9 +59,7 @@ def load_reco_model():
 yield_model, yield_x_scaler, yield_y_scaler, district_yield_mean = load_yield_model()
 reco_model, reco_scaler, reco_encoder = load_reco_model()
 
-# ---------------------------------
 # SIDEBAR INPUTS
-# ---------------------------------
 st.sidebar.header("🌍 Location")
 
 state = st.sidebar.selectbox(
@@ -86,7 +79,7 @@ crop = st.sidebar.selectbox(
 
 year = st.sidebar.number_input(
     "Year",
-    min_value=2020,
+    min_value=2000,
     max_value=2030,
     value=2024
 )
@@ -108,67 +101,62 @@ solar = st.sidebar.number_input(
     "Solar Radiation (MJ/m²/day)", 0.0, 30.0, 18.0
 )
 
-# ---------------------------------
-# CACHE-ENABLED PREDICTION FUNCTIONS
-# ---------------------------------
-@st.cache_data(show_spinner=False)
-def predict_yield_cached(base_inputs, district_name, crop_name, year):
-    TIME_STEPS = 7  # must match training
+# ===================== RECURSIVE YIELD PREDICTION =====================
+def predict_yield_recursive(
+    base_inputs,
+    district_name,
+    start_year,
+    target_year
+):
+    TIME_STEPS = 7
 
-    # Get district mean (log scale)
-    district_mean = district_yield_mean.get(
+    current_yield = district_yield_mean.get(
         district_name,
         np.mean(list(district_yield_mean.values()))
     )
 
-    # Approximate previous year yield
-    yield_lag1 = district_mean
+    district_mean = current_yield
 
-    # Final feature vector (12 features)
-    full_input = base_inputs + [yield_lag1, district_mean]
+    for _ in range(start_year + 1, target_year + 1):
 
-    # 🔁 Repeat for time steps
-    X_single = np.array(full_input).reshape(1, 1, -1)
-    X_seq = np.repeat(X_single, TIME_STEPS, axis=1)
+        full_input = base_inputs + [current_yield, district_mean]
 
-    # Scale
-    X_scaled = yield_x_scaler.transform(
-        X_seq.reshape(-1, X_seq.shape[2])
-    ).reshape(X_seq.shape)
+        X_single = np.array(full_input).reshape(1, 1, -1)
+        X_seq = np.repeat(X_single, TIME_STEPS, axis=1)
 
-    # Predict
-    y_scaled = yield_model.predict(X_scaled)
-    y = np.expm1(yield_y_scaler.inverse_transform(y_scaled))
+        X_scaled = yield_x_scaler.transform(
+            X_seq.reshape(-1, X_seq.shape[2])
+        ).reshape(X_seq.shape)
 
-    return float(y[0][0])
+        y_scaled = yield_model.predict(X_scaled, verbose=0)
+        y_pred = np.expm1(
+            yield_y_scaler.inverse_transform(y_scaled)
+        )[0][0]
 
+        current_yield = float(y_pred)
+
+    return current_yield
+# ====================================================================
 
 
 @st.cache_data(show_spinner=False)
 def recommend_crop_cached(base_inputs):
-    SEQUENCE_LENGTH = 6  # must match training
+    SEQUENCE_LENGTH = 6
 
-    # Build single-step input
     X_single = np.array(base_inputs).reshape(1, 1, -1)
-
-    # 🔁 Repeat to required sequence length
     X_seq = np.repeat(X_single, SEQUENCE_LENGTH, axis=1)
 
-    # Scale properly
     X_scaled = reco_scaler.transform(
         X_seq.reshape(-1, X_seq.shape[2])
     ).reshape(X_seq.shape)
 
-    # Predict
     probs = reco_model.predict(X_scaled)[0]
     top3_idx = np.argsort(-probs)[:3]
     crops = reco_encoder.inverse_transform(top3_idx)
 
     return crops.tolist()
 
-# ---------------------------------
-# PREDICTION BUTTON
-# ---------------------------------
+# ===================== BUTTON =====================
 if st.button("🚀 Generate Recommendation"):
     st.subheader("📊 Prediction Results")
 
@@ -185,29 +173,49 @@ if st.button("🚀 Generate Recommendation"):
         solar
     ]
 
-    predicted_yield = predict_yield_cached(
+    DATASET_LAST_YEAR = 2000
+
+    predicted_yield = predict_yield_recursive(
         base_features,
-        district,
-        crop,
-        year
+        district_name=district,
+        start_year=DATASET_LAST_YEAR,
+        target_year=year
     )
 
     top_crops = recommend_crop_cached(base_features)
+
+    input_data = {
+        "state": state,
+        "district": district,
+        "crop": crop,
+        "year": year,
+        "area": area,
+        "rainfall": rainfall,
+        "temperature": temperature,
+        "humidity": humidity,
+        "ph": ph,
+        "nitrogen": n_req,
+        "phosphorus": p_req,
+        "potassium": k_req,
+        "wind_speed": wind,
+        "solar_radiation": solar
+    }
+
+    save_cache(
+        input_data=input_data,
+        yield_pred=predicted_yield,
+        crops=top_crops
+    )
 
     col1, col2 = st.columns(2)
 
     with col1:
         st.markdown("### 🌾 Yield Prediction")
-        st.write(f"**Crop:** {crop}")
-        st.write(f"**District:** {district}")
-        st.metric(
-            "Predicted Yield",
-            f"{predicted_yield:.2f} kg/ha"
-        )
+        st.metric("Predicted Yield", f"{predicted_yield:.2f} kg/ha")
 
     with col2:
         st.markdown("### 🌱 Recommended Crops (Top-3)")
         for i, c in enumerate(top_crops, 1):
             st.write(f"**{i}. {c}**")
 
-    st.success("Prediction generated using cached intelligence 🚀")
+    st.success("Recursive year-wise prediction completed & cached 🚀")

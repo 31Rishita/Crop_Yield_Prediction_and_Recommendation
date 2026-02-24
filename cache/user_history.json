@@ -1,0 +1,52 @@
+[
+  {
+    "timestamp": "2026-02-08T12:34:07.394590",
+    "input_features": {
+      "state": "Andhra Pradesh",
+      "district": "Srikakulam",
+      "crop": "Rice",
+      "year": 2024,
+      "area": 1.0,
+      "rainfall": 800.0,
+      "temperature": 30.0,
+      "humidity": 60.0,
+      "ph": 6.5,
+      "nitrogen": 120.0,
+      "phosphorus": 60.0,
+      "potassium": 40.0,
+      "wind_speed": 3.0,
+      "solar_radiation": 18.0
+    },
+    "predicted_yield": 12607.26953125,
+    "recommended_crops": [
+      "cotton",
+      "chickpea",
+      "maize"
+    ]
+  },
+  {
+    "timestamp": "2026-02-08T12:41:34.328870",
+    "input_features": {
+      "state": "Telangana",
+      "district": "Warangal",
+      "crop": "Chickpea",
+      "year": 2024,
+      "area": 1.0,
+      "rainfall": 800.0,
+      "temperature": 30.0,
+      "humidity": 60.0,
+      "ph": 6.5,
+      "nitrogen": 120.0,
+      "phosphorus": 60.0,
+      "potassium": 40.0,
+      "wind_speed": 3.0,
+      "solar_radiation": 18.0
+    },
+    "predicted_yield": 487.8474426269531,
+    "recommended_crops": [
+      "cotton",
+      "chickpea",
+      "maize"
+    ]
+  }
+]

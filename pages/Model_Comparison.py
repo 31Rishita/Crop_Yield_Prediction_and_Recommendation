@@ -5,23 +5,19 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 import os
 
-# -------------------------------------------------
 # PAGE CONFIG
-# -------------------------------------------------
 st.set_page_config(
     page_title="Model Comparison",
     page_icon="📊",
     layout="wide"
 )
 
-st.title("📊 Yield Prediction Model Comparison")
+st.title("Yield Prediction Model Comparison")
 st.markdown(
-    "Comparison between **Random Forest** and **BiLSTM (District-aware)** models"
+    "Comparison between **Random Forest** and **BiLSTM** models"
 )
 
-# -------------------------------------------------
 # LOAD EVALUATION FILES
-# -------------------------------------------------
 @st.cache_resource
 def load_eval():
     rf_path = "models/yield/yield_rf_eval.pkl"
@@ -40,21 +36,16 @@ def load_eval():
 
     return rf, lstm
 
-
 rf_eval, lstm_eval = load_eval()
 
-# -------------------------------------------------
 # EXTRACT DATA
-# -------------------------------------------------
 rf_y_true = np.array(rf_eval["y_test_real"]).flatten()
 rf_y_pred = np.array(rf_eval["y_pred_real"]).flatten()
 
 lstm_y_true = np.array(lstm_eval["y_test_real"]).flatten()
 lstm_y_pred = np.array(lstm_eval["y_pred_real"]).flatten()
 
-# -------------------------------------------------
 # METRICS FUNCTION
-# -------------------------------------------------
 def metrics(y_true, y_pred):
     mae = mean_absolute_error(y_true, y_pred)
     rmse = np.sqrt(mean_squared_error(y_true, y_pred))
@@ -65,9 +56,7 @@ def metrics(y_true, y_pred):
 rf_mae, rf_rmse, rf_r2 = metrics(rf_y_true, rf_y_pred)
 lstm_mae, lstm_rmse, lstm_r2 = metrics(lstm_y_true, lstm_y_pred)
 
-# -------------------------------------------------
 # METRICS DISPLAY
-# -------------------------------------------------
 st.subheader("📌 Quantitative Comparison")
 
 col1, col2 = st.columns(2)
@@ -86,9 +75,7 @@ with col2:
 
 st.markdown("---")
 
-# -------------------------------------------------
 # GRAPHICAL COMPARISON
-# -------------------------------------------------
 st.subheader("📈 Actual vs Predicted Yield")
 
 g1, g2 = st.columns(2)
@@ -128,9 +115,7 @@ with g2:
 
 st.markdown("---")
 
-# -------------------------------------------------
 # FINAL CONCLUSION
-# -------------------------------------------------
 if lstm_rmse < rf_rmse:
     st.success(
         "✅ **BiLSTM outperforms Random Forest** by capturing temporal and district-level patterns."

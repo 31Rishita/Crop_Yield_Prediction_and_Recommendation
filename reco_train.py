@@ -1,11 +1,8 @@
 from reco_preprocessing import prepare_reco_data
-
 import numpy as np
 import os
-
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, classification_report
-
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import (
     Dense,
@@ -19,7 +16,6 @@ from tensorflow.keras.utils import to_categorical
 
 DATASET = "dataset\Custom_Crops_yield_Historical_Dataset.csv"
 SEQUENCE_LENGTH = 6
-
 # 📦 Load data
 X, y = prepare_reco_data(DATASET, SEQUENCE_LENGTH)
 
@@ -35,7 +31,6 @@ X_train, X_test, y_train, y_test = train_test_split(
     shuffle=False
 )
 
-# 🧠 BiLSTM Model (High-Accuracy Design)
 model = Sequential([
     Bidirectional(
         LSTM(128, return_sequences=True),
@@ -62,7 +57,6 @@ model.compile(
 
 model.summary()
 
-# 🛑 Callbacks
 early_stop = EarlyStopping(
     monitor="val_loss",
     patience=7,
@@ -111,9 +105,7 @@ print("✅ BiLSTM Crop Recommendation Model Saved")
 
 import matplotlib.pyplot as plt
 
-# -----------------------------
 # PLOT 3: Training vs Validation Accuracy
-# -----------------------------
 plt.figure()
 plt.plot(history.history["accuracy"], label="Training Accuracy")
 plt.plot(history.history["val_accuracy"], label="Validation Accuracy")
@@ -145,3 +137,15 @@ pickle.dump(
     eval_data,
     open("models/reco/reco_eval.pkl", "wb")
 )
+
+from cache.cache_store import load_cache
+import pandas as pd
+
+cache_data = load_cache()
+
+if len(cache_data) > 0:
+    df_cache = pd.DataFrame([c["input_features"] for c in cache_data])
+    df_cache["yield"] = [c["predicted_yield"] for c in cache_data]
+
+    # Now merge with original dataset
+    df_full = pd.concat([original_df, df_cache], ignore_index=True)
