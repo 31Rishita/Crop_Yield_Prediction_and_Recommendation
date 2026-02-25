@@ -86,12 +86,10 @@ y_pred_prob = model.predict(X_test)
 y_pred = np.argmax(y_pred_prob, axis=1)
 y_true = np.argmax(y_test, axis=1)
 
-print("\n🌱 TOP-1 ACCURACY:", accuracy_score(y_true, y_pred))
-
-# 🔥 TOP-3 Accuracy
-top3 = np.argsort(-y_pred_prob, axis=1)[:, :3]
-top3_acc = np.mean([y_true[i] in top3[i] for i in range(len(y_true))])
-print("🔥 TOP-3 ACCURACY:", top3_acc)
+# 🔥 TOP-2 Accuracy
+top2 = np.argsort(-y_pred_prob, axis=1)[:, :2]
+top2_acc = np.mean([y_true[i] in top2[i] for i in range(len(y_true))])
+print("\n🔥 TOP-2 ACCURACY:", top2_acc)
 
 print("\n📋 Classification Report\n")
 print(classification_report(y_true, y_pred))
@@ -142,7 +140,7 @@ from cache.cache_store import load_cache
 import pandas as pd
 
 cache_data = load_cache()
-
+original_df = pd.read_csv(DATASET)
 if len(cache_data) > 0:
     df_cache = pd.DataFrame([c["input_features"] for c in cache_data])
     df_cache["yield"] = [c["predicted_yield"] for c in cache_data]

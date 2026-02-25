@@ -172,9 +172,21 @@ import pandas as pd
 
 cache_data = load_cache()
 
+# ✅ Load actual dataframe instead of string
+original_df = pd.read_csv("dataset/Custom_Crops_yield_Historical_Dataset.csv")
+
 if len(cache_data) > 0:
     df_cache = pd.DataFrame([c["input_features"] for c in cache_data])
-    df_cache["yield"] = [c["predicted_yield"] for c in cache_data]
+    df_cache["Yield_kg_per_ha"] = [c["predicted_yield"] for c in cache_data]
 
-    # Now merge with original dataset
+    # Optional: align columns properly
+    df_cache = df_cache.reindex(columns=original_df.columns, fill_value=np.nan)
+
+    # ✅ Now this will work
     df_full = pd.concat([original_df, df_cache], ignore_index=True)
+
+    print("✅ Cache predictions merged successfully")
+    print("New dataset shape:", df_full.shape)
+
+else:
+    print("⚠ No cache data found.")

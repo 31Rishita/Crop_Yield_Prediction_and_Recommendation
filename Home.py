@@ -151,8 +151,8 @@ def recommend_crop_cached(base_inputs):
     ).reshape(X_seq.shape)
 
     probs = reco_model.predict(X_scaled)[0]
-    top3_idx = np.argsort(-probs)[:3]
-    crops = reco_encoder.inverse_transform(top3_idx)
+    top2_idx = np.argsort(-probs)[:2]
+    crops = reco_encoder.inverse_transform(top2_idx)
 
     return crops.tolist()
 
@@ -214,7 +214,7 @@ if st.button("🚀 Generate Recommendation"):
         st.metric("Predicted Yield", f"{predicted_yield:.2f} kg/ha")
 
     with col2:
-        st.markdown("### 🌱 Recommended Crops (Top-3)")
+        st.markdown("### 🌱 Recommended Crops (Top-2)")
         for i, c in enumerate(top_crops, 1):
             st.write(f"**{i}. {c}**")
 
